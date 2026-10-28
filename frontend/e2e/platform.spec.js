@@ -1,0 +1,148 @@
+import { test, expect } from '@playwright/test';
+import { translations } from '../src/i18n.js';
+
+async function login(page) {
+ await page.goto('/');
+ await page.getByRole('button',{name:'Sign in',exact:true}).first().click();
+ const dialog=page.getByRole('dialog');
+ await dialog.getByLabel('Email address').fill('qa-admin@example.invalid');
+ await dialog.getByLabel('Password',{exact:true}).fill('local-browser-qa-only-password');
+ await dialog.getByRole('button',{name:'Sign in',exact:true}).click();
+ await expect(dialog).not.toBeVisible();
+}
+
+test('registration, visual analysis, evidence state, PDF, and private history',async({page})=>{
+ // This integration case loads the installed CPU models on its first upload.
+ test.setTimeout(180000);
+ const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ await page.setViewportSize({width:1440,height:1000});
+ await page.goto('/');
+ await expect(page.getByRole('heading',{name:'Pause before sharing. See more of the story.'})).toBeVisible();
+ await page.screenshot({path:'../artifacts/home-desktop.png',fullPage:true});
+ await page.getByRole('button',{name:'Sign in',exact:true}).first().click();
+ const dialog=page.getByRole('dialog');
+ await dialog.getByRole('button',{name:'Create an account',exact:true}).click();
+ await dialog.getByLabel('Your name').fill('Browser QA Reader');
+ await dialog.getByLabel('Email address').fill(`browser-${Date.now()}@example.invalid`);
+ await dialog.getByLabel('Password',{exact:true}).fill('local-browser-testing-password-123');
+ await dialog.getByRole('button',{name:'Create an account',exact:true}).click();
+ await expect(dialog).not.toBeVisible();
+ await page.locator('#sidebar').getByRole('button',{name:'Check content',exact:true}).click();
+ await page.getByRole('menuitem',{name:/Image/}).click();
+ const syntheticPng=await page.evaluate(()=>{
+  const canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;
+  const context=canvas.getContext('2d');
+  const gradient=context.createLinearGradient(0,0,128,128);
+  gradient.addColorStop(0,'#326868');gradient.addColorStop(1,'#e8be7f');
+  context.fillStyle=gradient;context.fillRect(0,0,128,128);
+  context.fillStyle='#f3ede0';context.fillRect(32,32,64,64);
+  return canvas.toDataURL('image/png').split(',')[1];
+ });
+ await page.locator('input[type="file"]').setInputFiles({name:'synthetic-image.png',mimeType:'image/png',buffer:Buffer.from(syntheticPng,'base64')});
+ await page.getByRole('button',{name:'Add optional claim or caption',exact:true}).click();
+ await page.getByLabel('Optional claim or caption',{exact:true}).fill('The city council approved the new transport budget on Monday.');
+ await page.getByRole('button',{name:'Analyze content',exact:true}).click();
+ await expect(page.getByLabel('Image text to verify',{exact:true})).toHaveCount(0);
+ await expect(page.locator('.report-summary .summary-verdict')).toHaveText('UNVERIFIED',{timeout:120000});
+ const metrics=page.getByRole('region',{name:'Model metrics',exact:true});
+ await expect(metrics.locator('.metric-label')).toHaveText(['Real image pattern score','AI image pattern score','Image model confidence']);
+ await expect(page.locator('.report-card .metric')).toHaveCount(3);
+ await page.screenshot({path:'../artifacts/report-desktop.png',fullPage:true});
+ const downloadPromise=page.waitForEvent('download');
+ await page.getByRole('link',{name:'Download PDF'}).click();
+ const download=await downloadPromise;
+ expect(download.suggestedFilename()).toMatch(/^verification-report-.*\.pdf$/);
+ await download.saveAs('../artifacts/browser-report.pdf');
+ await page.locator('#sidebar').getByRole('button',{name:'History',exact:true}).click();
+ await expect(page.getByText('The city council approved the new transport budget on Monday.',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Open report',exact:true}).click();
+ await expect(page.locator('.report-summary .summary-verdict')).toHaveText('UNVERIFIED');
+ await page.locator('.sidebar').getByRole('button',{name:'Profile',exact:true}).click();
+ await page.getByLabel('Your name').fill('Browser QA Updated');
+ const updatedEmail=`browser-profile-${Date.now()}@example.invalid`;
+ await page.getByLabel('Email address').fill(updatedEmail);
+ await page.getByLabel('Current password').fill('local-browser-testing-password-123');
+ await page.getByLabel('New password',{exact:true}).fill('local-browser-updated-password-456');
+ await page.getByLabel('Confirm new password').fill('local-browser-updated-password-456');
+ await page.getByRole('button',{name:'Save',exact:true}).click();
+ await expect(page.getByRole('status').getByText('Your profile has been updated.')).toBeVisible();
+ const signOutButton=page.getByRole('button',{name:'Sign out',exact:true});
+ await signOutButton.click();
+ await signOutButton.waitFor({state:'detached'});
+ await page.goto('/#history');
+ await expect(page.locator('.report-card')).toHaveCount(0);
+ expect((await page.request.get('/api/reports')).status()).toBe(401);
+ await page.getByRole('button',{name:'Sign in',exact:true}).first().click();
+ const loginDialog=page.getByRole('dialog');
+ await loginDialog.getByLabel('Email address').fill(updatedEmail);
+ await loginDialog.getByLabel('Password',{exact:true}).fill('local-browser-updated-password-456');
+ await loginDialog.getByRole('button',{name:'Sign in',exact:true}).click();
+ await expect(loginDialog).not.toBeVisible();
+ await expect(page.locator('.sidebar')).toBeVisible();
+ expect(errors).toEqual([]);
+});
+
+test('responsive Hindi and Telugu navigation, upload, and carousel controls',async({page})=>{
+ const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ await page.setViewportSize({width:390,height:844});
+ await login(page);
+ await page.getByRole('combobox',{name:'Language',exact:true}).selectOption('hi');
+ await expect(page.locator('html')).toHaveAttribute('lang','hi');
+ await expect(page.locator('.hero h2')).toContainText(translations.hi.homeHeroLine1);
+ await page.screenshot({path:'../artifacts/home-hindi-mobile.png',fullPage:true});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+ await page.getByRole('combobox',{name:'भाषा',exact:true}).selectOption('te');
+ await expect(page.locator('.hero h2')).toContainText(translations.te.homeHeroLine1);
+ await page.screenshot({path:'../artifacts/home-telugu-mobile.png',fullPage:true});
+ await page.goto('/#verify');
+ await page.getByRole('tab',{name:'వీడియో',exact:true}).click();
+ await expect(page.getByText('మీ ఫైల్‌ను ఇక్కడ వేయండి')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+ await page.screenshot({path:'../artifacts/upload-telugu-mobile.png',fullPage:true});
+ expect(errors).toEqual([]);
+});
+
+test('admin can manage a source and a dataset version',async({page})=>{
+ const stamp=Date.now();
+ const sourceName=`Browser QA source ${stamp}`,datasetName=`Browser QA dataset ${stamp}`;
+ await page.goto('/');
+ await page.getByRole('button',{name:'Sign in',exact:true}).first().click();
+ const dialog=page.getByRole('dialog');
+ await dialog.getByLabel('Email address').fill('qa-admin@example.invalid');
+ await dialog.getByLabel('Password',{exact:true}).fill('local-browser-qa-only-password');
+ await dialog.getByRole('button',{name:'Sign in',exact:true}).click();
+ await expect(dialog).not.toBeVisible();
+ await page.locator('#sidebar').getByRole('button',{name:'Admin',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'The control room.'})).toBeVisible();
+ await page.locator('.admin-tabs').getByRole('button',{name:'Trusted sources'}).click();
+ await page.getByLabel('Source name').fill(sourceName);
+ await page.getByLabel('HTTPS website URL').fill(`https://qa-${stamp}.example.org`);
+ await page.getByRole('button',{name:'Add source',exact:true}).click();
+ await expect(page.locator('.admin-source').filter({hasText:sourceName})).toBeVisible();
+ await page.locator('.admin-tabs').getByRole('button',{name:'Datasets',exact:true}).click();
+ await page.getByLabel('Dataset name').fill(datasetName);
+ await page.getByLabel('Version',{exact:true}).fill('qa-v1');
+ await page.getByRole('button',{name:'Save',exact:true}).click();
+ await expect(page.getByRole('region',{name:datasetName,exact:true})).toBeVisible();
+ await page.screenshot({path:'../artifacts/admin-desktop.png',fullPage:true});
+});
+
+test('slideshow advances automatically and pauses on hover and keyboard focus',async({page})=>{
+ await page.clock.install();
+ await page.goto('/');
+ const hero=page.locator('.landing-hero');
+ const carousel=page.getByRole('group',{name:'Verification examples'});
+ const indicators=carousel.getByRole('button',{name:/^Show image/});
+ const headline=await hero.locator('h1').textContent();
+ await carousel.hover();
+ await page.clock.fastForward(9000);
+ await expect(indicators.nth(0)).toHaveAttribute('aria-pressed','true');
+ await expect(hero.locator('h1')).toHaveText(headline);
+ await page.mouse.move(0,0);
+ await page.clock.fastForward(4500);
+ await expect(indicators.nth(1)).toHaveAttribute('aria-pressed','true');
+ await expect(hero.locator('h1')).toHaveText(headline);
+ await page.getByRole('button',{name:'Previous image',exact:true}).focus();
+ await page.clock.fastForward(9000);
+ await expect(indicators.nth(1)).toHaveAttribute('aria-pressed','true');
+});

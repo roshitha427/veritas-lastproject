@@ -1,0 +1,8 @@
+# CPU wheels keep NVIDIA/CUDA packages out of the web image.
+--extra-index-url https://download.pytorch.org/whl/cpu
+-r requirements.txt
+torch==2.6.0+cpu
+torchvision==0.21.0+cpu
+transformers==4.57.6
+sentencepiece==0.2.2
+imageio-ffmpeg==0.6.0

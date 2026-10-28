@@ -1,0 +1,5 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { ShieldCheck, ArrowUpRight, ArrowRight, ArrowLeft, FileText, Image as ImageIcon, Video, Search, ScanLine, Check, X, UploadCloud, LockKeyhole, Globe2, Volume2, History, LogOut, Menu, ChevronRight, ChevronDown, CircleHelp, Sparkles, Fingerprint, Link2, Download, LoaderCircle, AlertTriangle, ExternalLink, Trash2, LayoutDashboard, Users, Database, Settings2, CircleCheck, Plus, RefreshCw, Play, Eye, BookOpen, Pause, Leaf } from 'lucide-react';
+export function Brand({small=false}) {return <a className={`brand ${small?'small':''}`} href="#home" aria-label="AI-Powered Fake News Detection and Verification System home" title="AI-Powered Fake News Detection and Verification System"><span className="logo"><ShieldCheck strokeWidth={1.8}/></span><span className="brand-name"><span>AI-Powered Fake News</span><span>Detection and Verification System</span></span></a>}
+export function IconBadge({icon:Icon, tone=''}) {return <span className={`icon-badge ${tone}`}><Icon size={23} strokeWidth={1.6}/></span>}
+

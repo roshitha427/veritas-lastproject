@@ -1,0 +1,49 @@
+# Local development only. Production needs your own secrets and HTTPS.
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: veritas
+      MYSQL_USER: veritas
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-local-development-password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local-root-password}
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  web:
+    build:
+      context: .
+      args:
+        INSTALL_INFERENCE: ${INSTALL_INFERENCE:-true}
+        MODEL_BUNDLE_URL: ${MODEL_BUNDLE_URL:-}
+        MODEL_BUNDLE_SHA256: ${MODEL_BUNDLE_SHA256:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      APP_ENV: development
+      SECRET_KEY: ${SECRET_KEY:-local-development-session-key-change-me}
+      DATABASE_BACKEND: mysql
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: veritas
+      MYSQL_USER: veritas
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-local-development-password}
+      PUBLIC_BASE_URL: http://localhost:5000
+      COOKIE_SECURE: "false"
+      EVIDENCE_PROVIDER: public
+      WHISPER_MODEL: models/whisper-tiny
+      DATA_DIR: /var/data
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - app-data:/var/data
+volumes:
+  mysql-data:
+  app-data:

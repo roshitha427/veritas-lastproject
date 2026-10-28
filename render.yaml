@@ -1,0 +1,61 @@
+# Import this repository as a Render Blueprint. MySQL is provisioned separately.
+services:
+  - type: web
+    name: veritas-lastproject
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: 1c-2g
+    numInstances: 1
+    healthCheckPath: /api/health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATABASE_BACKEND
+        value: mysql
+      - key: MYSQL_HOST
+        sync: false
+      - key: MYSQL_PORT
+        value: "3306"
+      - key: MYSQL_DATABASE
+        sync: false
+      - key: MYSQL_USER
+        sync: false
+      - key: MYSQL_PASSWORD
+        sync: false
+      - key: MYSQL_SSL_CA
+        value: ""
+      - key: SECRET_KEY
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: DATA_DIR
+        value: /var/data
+      - key: EVIDENCE_PROVIDER
+        value: tavily
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: WHISPER_MODEL
+        value: models/whisper-tiny
+      - key: INSTALL_INFERENCE
+        value: "true"
+      - key: MODEL_BUNDLE_URL
+        sync: false
+      - key: MODEL_BUNDLE_SHA256
+        sync: false
+      - key: WAITRESS_THREADS
+        value: "6"
+      # Public requests reach this service through Render's ingress only.
+      - key: WAITRESS_TRUSTED_PROXY
+        value: "*"
+      - key: WAITRESS_TRUSTED_PROXY_COUNT
+        value: "1"
+    disk:
+      name: private-report-media
+      mountPath: /var/data
+      sizeGB: 1

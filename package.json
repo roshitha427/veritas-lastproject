@@ -1,0 +1,14 @@
+{
+  "name": "ai-news-verification",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "doctor": "python -m scripts.check_system",
+    "check:setup": "python -m scripts.check_setup",
+    "check:database": "python -m scripts.check_database",
+    "api": "python -m backend.app",
+    "test": "python -m pytest -q",
+    "start": "python -m scripts.serve"
+  }
+}

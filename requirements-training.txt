@@ -1,0 +1,5 @@
+# Run training separately from the web service.
+-r requirements-inference.txt
+accelerate>=1.4,<2
+pandas>=2.2,<3
+datasets>=3.3,<4
